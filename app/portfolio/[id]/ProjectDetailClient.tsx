@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -28,9 +28,11 @@ export default function ProjectDetailClient({ id }: ProjectDetailClientProps) {
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     if (id) {
+      setImageError(false);
       fetchProject();
     }
   }, [id]);
@@ -109,19 +111,20 @@ export default function ProjectDetailClient({ id }: ProjectDetailClientProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      {/* Project Image */}
-      {project.imageUrl ? (
-        <div className="w-full h-96 bg-gray-200 dark:bg-gray-800">
+      {/* Project Image - Full width, maintains aspect ratio */}
+      {project.imageUrl && !imageError ? (
+        <div className="w-full bg-gray-200 dark:bg-gray-800">
           <img
             src={project.imageUrl}
             alt={project.title}
-            className="w-full h-full object-cover"
+            className="w-full h-auto max-h-[600px] object-contain mx-auto"
+            onError={() => setImageError(true)}
           />
         </div>
       ) : (
-        <div className="w-full h-96 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+        <div className="w-full h-64 bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
           <svg
-            className="w-32 h-32 text-white opacity-50"
+            className="w-24 h-24 text-white opacity-50"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

@@ -150,6 +150,7 @@ function PortfolioContent() {
                         src={project.imageUrl}
                         alt={project.title}
                         className="w-full h-full object-cover"
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
                       />
                     )}
                   </div>
