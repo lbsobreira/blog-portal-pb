@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" fill="none" stroke="#3b82f6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Terminal/window frame -->
+  <rect x="6" y="10" width="52" height="44" rx="4"/>
+  <!-- Title bar -->
+  <line x1="6" y1="20" x2="58" y2="20"/>
+  <!-- Window controls -->
+  <circle cx="14" cy="15" r="2"/>
+  <circle cx="22" cy="15" r="2"/>
+  <circle cx="30" cy="15" r="2"/>
+  <!-- Code bracket left -->
+  <polyline points="20 32 14 38 20 44"/>
+  <!-- Code bracket right -->
+  <polyline points="44 32 50 38 44 44"/>
+  <!-- Forward slash -->
+  <line x1="36" y1="30" x2="28" y2="46"/>
+</svg>

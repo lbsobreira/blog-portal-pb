@@ -1,0 +1,246 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for authentication and content ownership
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  posts         Post[]
+  comments      Comment[]
+  likes         Like[]
+  accounts      Account[]
+  sessions      Session[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+// NextAuth.js Account model
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+// NextAuth.js Session model
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// NextAuth.js Verification Token for magic links
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// Blog post model
+model Post {
+  id          String    @id @default(cuid())
+  title       String
+  slug        String    @unique
+  content     String    @db.Text
+  excerpt     String?   @db.Text
+  coverImage  String?
+  published   Boolean   @default(false)
+  views       Int       @default(0)
+  readingTime Int?      // in minutes
+  authorId    String
+  categoryId  String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  publishedAt DateTime?
+
+  // Relations
+  author   User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  comments Comment[]
+  likes    Like[]
+  tags     TagsOnPosts[]
+
+  @@index([slug])
+  @@index([authorId])
+  @@index([categoryId])
+  @@index([published])
+  @@map("posts")
+}
+
+// Category model for organizing posts
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  // Relations
+  posts Post[]
+
+  @@map("categories")
+}
+
+// Tag model
+model Tag {
+  id    String        @id @default(cuid())
+  name  String        @unique
+  slug  String        @unique
+  posts TagsOnPosts[]
+
+  @@map("tags")
+}
+
+// Many-to-many relation between Posts and Tags
+model TagsOnPosts {
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  postId String
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  tagId  String
+
+  @@id([postId, tagId])
+  @@map("tags_on_posts")
+}
+
+// Comment model with nested comments support
+// Supports both authenticated (admin) and anonymous (readers) comments
+model Comment {
+  id        String    @id @default(cuid())
+  content   String    @db.Text
+  postId    String
+  userId    String?   // Optional - null for anonymous comments
+  nickname  String?   // Display name for anonymous commenters
+  email     String?   // Optional email for admin reference (hidden from public)
+  parentId  String?   // For nested comments
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  // Relations
+  post     Post      @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user     User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("CommentReplies")
+
+  @@index([postId])
+  @@index([userId])
+  @@index([parentId])
+  @@map("comments")
+}
+
+// Like model for post reactions
+model Like {
+  id        String   @id @default(cuid())
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  // Relations
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([postId, userId]) // One like per user per post
+  @@index([postId])
+  @@index([userId])
+  @@map("likes")
+}
+
+// Site Settings for About page and other global content
+model SiteSettings {
+  id             String   @id @default("default")
+  // Site branding
+  siteName       String   @default("IT Blog")
+  siteTagline    String   @default("A personal space to showcase IT projects and share technical knowledge")
+  siteLogo       String?  // Logo image URL for header
+  siteLogoZoom   Int      @default(100)  // Zoom level for logo (100-200%)
+  siteLogoX      Int      @default(0)    // X position offset for logo
+  siteLogoY      Int      @default(0)    // Y position offset for logo
+  // About page
+  profileName    String   @default("Your Name")
+  profileTitle   String   @default("IT Professional")
+  profileLocation String  @default("Your Location")
+  profileBio     String   @db.Text @default("Welcome to my blog!")
+  profileImage     String?
+  profileImageZoom Int      @default(100)  // Zoom level for profile image (100-200%)
+  profileImageX    Int      @default(0)    // X position offset for profile image
+  profileImageY    Int      @default(0)    // Y position offset for profile image
+  coverImage       String?  // Header/banner image for About page
+  // Social links
+  githubUrl      String?
+  linkedinUrl    String?
+  twitterUrl     String?
+  contactEmail   String?
+  // Experience (stored as JSON)
+  experience     String   @db.Text @default("[]")
+  // Skills (stored as JSON)
+  skills         String   @db.Text @default("[]")
+  // Certifications (stored as JSON)
+  certifications String   @db.Text @default("[]")
+  // Badges (stored as JSON) - array of {name, imageUrl, link?}
+  badges         String   @db.Text @default("[]")
+
+  updatedAt      DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
+// Project model for portfolio showcase
+model Project {
+  id           String   @id @default(cuid())
+  title        String
+  slug         String   @unique
+  description  String   @db.Text
+  technologies String[] // Array of tech stack items
+  githubUrl    String?
+  liveUrl      String?
+  imageUrl     String?
+  featured     Boolean  @default(false)
+  order        Int      @default(0)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([slug])
+  @@index([featured])
+  @@map("projects")
+}
