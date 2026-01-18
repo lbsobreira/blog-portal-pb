@@ -39,6 +39,7 @@ async function getFeaturedContent() {
         technologies: true,
         githubUrl: true,
         liveUrl: true,
+        imageUrl: true,
       },
     }),
     // Get site settings
@@ -150,50 +151,72 @@ export default async function Home() {
               {featuredProjects.map((project) => (
                 <div
                   key={project.id}
-                  className="bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
+                  className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow group"
                 >
-                  <Link href={`/portfolio/${project.id}`} className="block">
-                    <div className="h-32 bg-gradient-to-br from-blue-500 to-purple-600"></div>
-                    <div className="p-6 pb-2">
-                      <h3 className="text-xl font-semibold mb-2 hover:text-blue-600 transition-colors">{project.title}</h3>
-                      <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
-                        {project.description}
-                      </p>
-                      {project.technologies.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {project.technologies.slice(0, 3).map((tech) => (
-                            <span
-                              key={tech}
-                              className="px-2 py-1 bg-gray-100 dark:bg-gray-700 text-xs rounded"
-                            >
-                              {tech}
-                            </span>
-                          ))}
-                        </div>
+                  {/* Clickable Image with Title Overlay */}
+                  <Link href={`/portfolio/${project.id}`} className="block relative">
+                    {/* Image or Gradient Placeholder */}
+                    <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-600">
+                      {project.imageUrl && (
+                        <img
+                          src={project.imageUrl}
+                          alt={project.title}
+                          className="w-full h-full object-cover"
+                        />
                       )}
                     </div>
+
+                    {/* Title Overlay */}
+                    <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 via-black/50 to-transparent">
+                      <h3 className="text-xl font-bold text-white line-clamp-2 group-hover:text-blue-300 transition-colors">
+                        {project.title}
+                      </h3>
+                    </div>
                   </Link>
-                  <div className="px-6 pb-6 flex gap-3">
-                    {project.githubUrl && (
-                      <a
-                        href={project.githubUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600"
-                      >
-                        GitHub →
-                      </a>
+
+                  {/* Project Content */}
+                  <div className="p-4">
+                    <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-2 text-sm">
+                      {project.description}
+                    </p>
+
+                    {/* Technologies */}
+                    {project.technologies.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mb-4">
+                        {project.technologies.slice(0, 3).map((tech) => (
+                          <span
+                            key={tech}
+                            className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded text-xs"
+                          >
+                            {tech}
+                          </span>
+                        ))}
+                      </div>
                     )}
-                    {project.liveUrl && (
-                      <a
-                        href={project.liveUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-sm text-blue-600 hover:text-blue-700"
-                      >
-                        Live Demo →
-                      </a>
-                    )}
+
+                    {/* Links */}
+                    <div className="flex gap-3">
+                      {project.githubUrl && (
+                        <a
+                          href={project.githubUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600"
+                        >
+                          GitHub →
+                        </a>
+                      )}
+                      {project.liveUrl && (
+                        <a
+                          href={project.liveUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm text-blue-600 hover:text-blue-700"
+                        >
+                          Live Demo →
+                        </a>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
