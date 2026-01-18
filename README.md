@@ -58,7 +58,7 @@ A modern, full-featured blog and portfolio platform built with Next.js 16, featu
 ### Prerequisites
 
 - Node.js 18+
-- PostgreSQL database
+- PostgreSQL database (local or cloud)
 - [Resend](https://resend.com/) account (free tier: 3,000 emails/month)
 
 ### Installation
@@ -74,7 +74,9 @@ A modern, full-featured blog and portfolio platform built with Next.js 16, featu
    npm install
    ```
 
-3. **Configure environment variables**
+3. **Set up PostgreSQL database** (see [Database Setup](#database-setup) below)
+
+4. **Configure environment variables**
    ```bash
    cp .env.example .env
    ```
@@ -93,21 +95,126 @@ A modern, full-featured blog and portfolio platform built with Next.js 16, featu
    EMAIL_FROM="onboarding@resend.dev"
    ```
 
-4. **Set up the database**
+5. **Push schema to database**
    ```bash
-   # Push schema to database
    npx prisma db push
 
    # (Optional) Seed with sample data
    npm run db:seed
    ```
 
-5. **Start development server**
+6. **Start development server**
    ```bash
    npm run dev
    ```
 
-6. **Open [http://localhost:3000](http://localhost:3000)**
+7. **Open [http://localhost:3000](http://localhost:3000)**
+
+## Database Setup
+
+### Option 1: Local Development with Docker (Recommended)
+
+The easiest way to run PostgreSQL locally:
+
+1. **Start PostgreSQL container**
+   ```bash
+   docker-compose up -d
+   ```
+
+   This starts PostgreSQL on port 5432 with:
+   - Database: `blog_portal`
+   - User: `postgres`
+   - Password: `postgres`
+
+2. **Set your DATABASE_URL**
+   ```env
+   DATABASE_URL="postgresql://postgres:postgres@localhost:5432/blog_portal"
+   ```
+
+3. **Manage the container**
+   ```bash
+   # Stop the database
+   docker-compose down
+
+   # View logs
+   docker-compose logs -f
+
+   # Reset database (deletes all data)
+   docker-compose down -v && docker-compose up -d
+   ```
+
+### Option 2: Cloud Database (Production)
+
+For production deployments, use a managed PostgreSQL service:
+
+| Provider | Free Tier | Best For |
+|----------|-----------|----------|
+| [Supabase](https://supabase.com) | 500MB, 2 projects | Full-featured, great dashboard |
+| [Neon](https://neon.tech) | 512MB, branching | Serverless, auto-scaling |
+| [Vercel Postgres](https://vercel.com/storage/postgres) | 256MB | Seamless Vercel integration |
+| [Railway](https://railway.app) | $5 credit/month | Simple setup |
+
+#### Supabase Setup Example
+
+1. Create a project at [supabase.com](https://supabase.com)
+2. Go to **Settings → Database → Connection string**
+3. Copy the **Transaction Pooler** connection string (port 6543)
+4. Add `?pgbouncer=true` to the end:
+
+```env
+DATABASE_URL="postgresql://postgres.[PROJECT_ID]:[PASSWORD]@aws-0-[REGION].pooler.supabase.com:6543/postgres?pgbouncer=true"
+```
+
+> **Important for Serverless (Vercel):**
+> - Use **Transaction Pooler** (port 6543), not Direct Connection
+> - Add `?pgbouncer=true` to disable prepared statements
+> - This prevents connection timeout errors
+
+#### Connection String Format
+
+```
+postgresql://USER:PASSWORD@HOST:PORT/DATABASE?options
+```
+
+| Component | Description |
+|-----------|-------------|
+| `USER` | Database username |
+| `PASSWORD` | Database password (URL-encoded if special chars) |
+| `HOST` | Database server address |
+| `PORT` | 5432 (direct) or 6543 (pooler) |
+| `DATABASE` | Database name |
+| `?pgbouncer=true` | Required for connection poolers |
+
+### Database Commands
+
+```bash
+# Push schema to database (development)
+npm run db:push
+
+# Open visual database browser
+npm run db:studio
+
+# Create migration (production)
+npx prisma migrate dev --name migration_name
+
+# Apply migrations (production)
+npx prisma migrate deploy
+
+# Seed with sample data
+npm run db:seed
+
+# Reset database (caution: deletes all data)
+npx prisma migrate reset
+```
+
+### Troubleshooting
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| Connection timeout | Using Direct Connection with serverless | Use Transaction Pooler (port 6543) |
+| Prepared statement error | Missing pgbouncer parameter | Add `?pgbouncer=true` to DATABASE_URL |
+| Authentication failed | Wrong password or user | Check credentials, URL-encode special characters |
+| Database does not exist | Database not created | Create database or use `prisma db push` |
 
 ### Becoming an Admin
 
@@ -160,25 +267,6 @@ blog-portal/
 ├── lib/                    # Utilities
 ├── prisma/                 # Database schema & seed
 └── public/                 # Static assets
-```
-
-## Database Commands
-
-```bash
-# View/edit data in browser
-npm run db:studio
-
-# Push schema changes (development)
-npm run db:push
-
-# Create migration (production)
-npx prisma migrate dev --name migration_name
-
-# Apply migrations (production)
-npx prisma migrate deploy
-
-# Seed database
-npm run db:seed
 ```
 
 ## Security Features

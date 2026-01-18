@@ -1,16 +1,16 @@
 services:
   postgres:
-    image: postgres:latest
-    container_name: blog-postgres
-    restart: always
+    image: postgres:16
+    container_name: blog-portal-db
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: blogportal2024
+      POSTGRES_PASSWORD: postgres
       POSTGRES_DB: blog_portal
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
