@@ -9,6 +9,23 @@ A modern, full-featured blog and portfolio platform built with Next.js 16, featu
 ![Prisma](https://img.shields.io/badge/Prisma-6-2D3748?logo=prisma)
 ![License](https://img.shields.io/badge/License-MIT-green)
 
+## Screenshots
+
+### Homepage
+![Homepage](screenshots/homepage.jpg)
+
+### About Page
+![About Page](screenshots/about-page.jpg)
+
+### Admin Dashboard
+![Admin Dashboard](screenshots/admin-dashboard.jpg)
+
+### Post Editor
+![Post Editor](screenshots/admin-new-post.jpg)
+
+### Categories & Tags Management
+![Categories & Tags](screenshots/admin-categories.jpg)
+
 ## Features
 
 ### Blog System
