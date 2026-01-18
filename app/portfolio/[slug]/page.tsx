@@ -4,15 +4,15 @@ import { prisma } from "@/lib/prisma";
 import ProjectDetailClient from "./ProjectDetailClient";
 
 interface Props {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }
 
 // Generate dynamic metadata for SEO
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { id } = await params;
+  const { slug } = await params;
 
   const project = await prisma.project.findUnique({
-    where: { id },
+    where: { slug },
     select: {
       title: true,
       description: true,
@@ -37,7 +37,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: project.title,
       description: project.description.substring(0, 160),
       type: "website",
-      url: `${baseUrl}/portfolio/${id}`,
+      url: `${baseUrl}/portfolio/${slug}`,
       images: project.imageUrl ? [{ url: project.imageUrl }] : undefined,
     },
     twitter: {
@@ -51,16 +51,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 // Server component to check if project exists
 export default async function ProjectDetailPage({ params }: Props) {
-  const { id } = await params;
+  const { slug } = await params;
 
   const project = await prisma.project.findUnique({
-    where: { id },
-    select: { id: true },
+    where: { slug },
+    select: { slug: true },
   });
 
   if (!project) {
     notFound();
   }
 
-  return <ProjectDetailClient id={id} />;
+  return <ProjectDetailClient slug={slug} />;
 }

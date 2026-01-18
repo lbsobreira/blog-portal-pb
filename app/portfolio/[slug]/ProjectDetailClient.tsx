@@ -19,10 +19,10 @@ interface Project {
 }
 
 interface ProjectDetailClientProps {
-  id: string;
+  slug: string;
 }
 
-export default function ProjectDetailClient({ id }: ProjectDetailClientProps) {
+export default function ProjectDetailClient({ slug }: ProjectDetailClientProps) {
   const { data: session } = useSession();
   const router = useRouter();
   const [project, setProject] = useState<Project | null>(null);
@@ -31,16 +31,16 @@ export default function ProjectDetailClient({ id }: ProjectDetailClientProps) {
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
-    if (id) {
+    if (slug) {
       setImageError(false);
       fetchProject();
     }
-  }, [id]);
+  }, [slug]);
 
   const fetchProject = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/projects/${id}`);
+      const response = await fetch(`/api/projects/${slug}`);
 
       if (response.status === 404) {
         setError("Project not found");

@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
-// GET /api/projects/[id] - Get single project by ID
+// GET /api/projects/[id] - Get single project by ID or slug
 export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -10,9 +10,17 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const project = await prisma.project.findUnique({
+    // Try to find by ID first, then by slug
+    let project = await prisma.project.findUnique({
       where: { id },
     });
+
+    // If not found by ID, try by slug
+    if (!project) {
+      project = await prisma.project.findUnique({
+        where: { slug: id },
+      });
+    }
 
     if (!project) {
       return NextResponse.json(

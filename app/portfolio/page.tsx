@@ -142,7 +142,7 @@ function PortfolioContent() {
                 className="bg-white dark:bg-gray-800 rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow group"
               >
                 {/* Clickable Image with Title Overlay */}
-                <Link href={`/portfolio/${project.id}`} className="block relative">
+                <Link href={`/portfolio/${project.slug}`} className="block relative">
                   {/* Image or Gradient Placeholder */}
                   <div className="h-48 bg-gradient-to-br from-blue-500 to-purple-600">
                     {project.imageUrl && (
