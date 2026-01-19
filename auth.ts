@@ -51,20 +51,34 @@ const authOptions: any = {
                 },
                 async authorize(credentials) {
                   if (!credentials?.email) return null;
-                  const email = credentials.email as string;
+                  const email = (credentials.email as string).toLowerCase().trim();
+
+                  // Check if any users exist
+                  const userCount = await prisma.user.count();
+
                   let user = await prisma.user.findUnique({
                     where: { email },
                   });
-                  if (!user) {
-                    const userCount = await prisma.user.count();
-                    user = await prisma.user.create({
-                      data: {
-                        email,
-                        name: email.split("@")[0],
-                        role: userCount === 0 ? "ADMIN" : "USER",
-                      },
-                    });
+
+                  if (userCount === 0) {
+                    // First user - create as admin
+                    if (!user) {
+                      user = await prisma.user.create({
+                        data: {
+                          email,
+                          name: email.split("@")[0],
+                          role: "ADMIN",
+                        },
+                      });
+                    }
+                  } else {
+                    // Users exist - only allow existing admins
+                    if (!user || user.role !== "ADMIN") {
+                      console.log(`Blocked sign-in attempt for non-admin: ${email}`);
+                      return null;
+                    }
                   }
+
                   return {
                     id: user.id,
                     email: user.email,
@@ -88,23 +102,32 @@ const authOptions: any = {
           async authorize(credentials) {
             if (!credentials?.email) return null;
 
-            const email = credentials.email as string;
+            const email = (credentials.email as string).toLowerCase().trim();
 
-            // Find or create user in dev mode
+            // Check if any users exist
+            const userCount = await prisma.user.count();
+
             let user = await prisma.user.findUnique({
               where: { email },
             });
 
-            if (!user) {
-              // Auto-create user in dev mode (first user becomes ADMIN)
-              const userCount = await prisma.user.count();
-              user = await prisma.user.create({
-                data: {
-                  email,
-                  name: email.split("@")[0],
-                  role: userCount === 0 ? "ADMIN" : "USER",
-                },
-              });
+            if (userCount === 0) {
+              // First user - create as admin
+              if (!user) {
+                user = await prisma.user.create({
+                  data: {
+                    email,
+                    name: email.split("@")[0],
+                    role: "ADMIN",
+                  },
+                });
+              }
+            } else {
+              // Users exist - only allow existing admins
+              if (!user || user.role !== "ADMIN") {
+                console.log(`Blocked sign-in attempt for non-admin: ${email}`);
+                return null;
+              }
             }
 
             return {
@@ -134,6 +157,48 @@ const authOptions: any = {
   },
   callbacks: {
     ...authConfig.callbacks,
+    // signIn callback - block non-admin sign-ins (defense in depth for magic links)
+    async signIn({ user, account }: { user: any; account: any }) {
+      // Skip check for credentials provider (already handled in authorize)
+      if (account?.provider === "dev-email") {
+        return true;
+      }
+
+      // For magic link (Resend), check if user is admin
+      if (account?.provider === "resend") {
+        const email = user.email?.toLowerCase().trim();
+        if (!email) return false;
+
+        // Check how many users exist
+        const userCount = await prisma.user.count();
+
+        // If this is the first user, allow (they'll be promoted to admin)
+        if (userCount === 0 || userCount === 1) {
+          // Could be 1 if the user was just created by the adapter
+          const existingUser = await prisma.user.findUnique({
+            where: { email },
+            select: { role: true },
+          });
+          // Allow first user or if they're already admin
+          if (!existingUser || existingUser.role === "ADMIN") {
+            return true;
+          }
+        }
+
+        // Check if user exists and is admin
+        const existingUser = await prisma.user.findUnique({
+          where: { email },
+          select: { role: true },
+        });
+
+        if (!existingUser || existingUser.role !== "ADMIN") {
+          console.log(`Blocked magic link sign-in for non-admin: ${email}`);
+          return false;
+        }
+      }
+
+      return true;
+    },
     // Override session callback to fetch fresh role from database
     async session({ session, token }: { session: any; token: any }) {
       if (token && session.user) {

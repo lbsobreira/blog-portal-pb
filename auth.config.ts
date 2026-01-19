@@ -23,10 +23,18 @@ export const authConfig: NextAuthConfig = {
     // This callback determines if a user is authorized to access a route
     authorized({ auth, request: { nextUrl } }) {
       const isLoggedIn = !!auth?.user;
+      const isAdmin = (auth?.user as any)?.role === "ADMIN";
       const isOnAdmin = nextUrl.pathname.startsWith("/admin");
       const isOnDashboard = nextUrl.pathname.startsWith("/dashboard");
 
-      if (isOnAdmin || isOnDashboard) {
+      if (isOnAdmin) {
+        // Admin routes require ADMIN role, not just being logged in
+        if (isAdmin) return true;
+        // Redirect non-admins to home page (not login, to avoid redirect loop)
+        return Response.redirect(new URL("/", nextUrl));
+      }
+
+      if (isOnDashboard) {
         if (isLoggedIn) return true;
         return false; // Redirect to login
       }

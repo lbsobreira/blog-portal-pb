@@ -9,6 +9,7 @@ function SignInForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [magicLink, setMagicLink] = useState("");
+  const [error, setError] = useState("");
   const searchParams = useSearchParams();
   const router = useRouter();
   const { data: session, status } = useSession();
@@ -24,6 +25,7 @@ function SignInForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError("");
 
     try {
       // Check if we should use dev mode (localhost without FORCE_RESEND)
@@ -31,6 +33,21 @@ function SignInForm() {
       const isLocalhost = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
       const forceResend = process.env.NEXT_PUBLIC_FORCE_RESEND === "true";
       const isDev = isLocalhost && !forceResend;
+
+      // First, check if this email is allowed to sign in (admin-only)
+      const checkResponse = await fetch("/api/auth/check-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+
+      const checkResult = await checkResponse.json();
+
+      if (!checkResult.allowed) {
+        setError(checkResult.reason || "Sign-in is not allowed for this email.");
+        setIsLoading(false);
+        return;
+      }
 
       if (isDev) {
         // Dev mode: use credentials provider with redirect: false to handle manually
@@ -47,7 +64,7 @@ function SignInForm() {
             window.location.href = callbackUrl;
           }, 100);
         } else if (result?.error) {
-          alert(`Sign in failed: ${result.error}. Make sure the email is valid.`);
+          setError(`Sign in failed: ${result.error}. Make sure the email is valid.`);
           setIsLoading(false);
         }
       } else {
@@ -61,13 +78,13 @@ function SignInForm() {
         if (result?.ok) {
           setEmailSent(true);
         } else if (result?.error) {
-          alert(`Sign in failed: ${result.error}`);
+          setError(`Sign in failed: ${result.error}`);
         }
         setIsLoading(false);
       }
     } catch (error) {
       console.error("Sign in error:", error);
-      alert("Sign in failed. Please try again.");
+      setError("Sign in failed. Please try again.");
       setIsLoading(false);
     }
   };
@@ -127,9 +144,9 @@ function SignInForm() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900 px-4">
       <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold mb-2">Welcome back</h1>
+          <h1 className="text-3xl font-bold mb-2">Admin Sign In</h1>
           <p className="text-gray-600 dark:text-gray-400">
-            Sign in to your account with a magic link
+            Sign in with your admin email
           </p>
         </div>
 
@@ -152,6 +169,12 @@ function SignInForm() {
             />
           </div>
 
+          {error && (
+            <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+            </div>
+          )}
+
           <button
             type="submit"
             disabled={isLoading}
@@ -163,7 +186,7 @@ function SignInForm() {
 
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            No password required. We'll email you a secure link to sign in.
+            Admin access only. A magic link will be sent to your email.
           </p>
         </div>
       </div>
