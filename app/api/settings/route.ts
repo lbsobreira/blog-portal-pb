@@ -60,6 +60,7 @@ export async function PUT(req: NextRequest) {
       skills,
       certifications,
       badges,
+      usefulLinks,
     } = body;
 
     const settings = await prisma.siteSettings.upsert({
@@ -88,6 +89,7 @@ export async function PUT(req: NextRequest) {
         ...(skills !== undefined && { skills: JSON.stringify(skills) }),
         ...(certifications !== undefined && { certifications: JSON.stringify(certifications) }),
         ...(badges !== undefined && { badges: JSON.stringify(badges) }),
+        ...(usefulLinks !== undefined && { usefulLinks: JSON.stringify(usefulLinks) }),
       },
       create: {
         id: "default",
@@ -114,6 +116,7 @@ export async function PUT(req: NextRequest) {
         skills: skills ? JSON.stringify(skills) : "[]",
         certifications: certifications ? JSON.stringify(certifications) : "[]",
         badges: badges ? JSON.stringify(badges) : "[]",
+        usefulLinks: usefulLinks ? JSON.stringify(usefulLinks) : "[]",
       },
     });
 

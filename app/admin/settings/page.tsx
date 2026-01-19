@@ -24,6 +24,11 @@ interface Badge {
   link?: string;
 }
 
+interface UsefulLink {
+  name: string;
+  url: string;
+}
+
 export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -56,6 +61,7 @@ export default function AdminSettingsPage() {
   const [skills, setSkills] = useState<SkillGroup[]>([]);
   const [certifications, setCertifications] = useState<string[]>([]);
   const [badges, setBadges] = useState<Badge[]>([]);
+  const [usefulLinks, setUsefulLinks] = useState<UsefulLink[]>([]);
 
   useEffect(() => {
     fetchSettings();
@@ -97,11 +103,13 @@ export default function AdminSettingsPage() {
         setSkills(JSON.parse(settings.skills || "[]"));
         setCertifications(JSON.parse(settings.certifications || "[]"));
         setBadges(JSON.parse(settings.badges || "[]"));
+        setUsefulLinks(JSON.parse(settings.usefulLinks || "[]"));
       } catch {
         setExperience([]);
         setSkills([]);
         setCertifications([]);
         setBadges([]);
+        setUsefulLinks([]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load settings");
@@ -126,6 +134,7 @@ export default function AdminSettingsPage() {
           skills,
           certifications,
           badges,
+          usefulLinks,
         }),
       });
 
@@ -204,6 +213,21 @@ export default function AdminSettingsPage() {
 
   const removeBadge = (index: number) => {
     setBadges(badges.filter((_, i) => i !== index));
+  };
+
+  // Useful Links handlers
+  const addUsefulLink = () => {
+    setUsefulLinks([...usefulLinks, { name: "", url: "" }]);
+  };
+
+  const updateUsefulLink = (index: number, field: keyof UsefulLink, value: string) => {
+    const updated = [...usefulLinks];
+    updated[index] = { ...updated[index], [field]: value };
+    setUsefulLinks(updated);
+  };
+
+  const removeUsefulLink = (index: number) => {
+    setUsefulLinks(usefulLinks.filter((_, i) => i !== index));
   };
 
   if (loading) {
@@ -637,6 +661,59 @@ export default function AdminSettingsPage() {
             ))}
             {badges.length === 0 && (
               <p className="text-gray-500 dark:text-gray-400 text-center py-4">No badges added yet</p>
+            )}
+          </div>
+        </div>
+
+        {/* Useful Links */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h2 className="text-xl font-semibold">Useful Links</h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Add links to your tools and resources. Displayed in the footer.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={addUsefulLink}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            >
+              Add Link
+            </button>
+          </div>
+          <div className="space-y-3">
+            {usefulLinks.map((link, index) => (
+              <div key={index} className="flex gap-4 items-center">
+                <div className="flex-1">
+                  <input
+                    type="text"
+                    value={link.name}
+                    onChange={(e) => updateUsefulLink(index, "name", e.target.value)}
+                    placeholder="Link name (e.g., SecureShare)"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                  />
+                </div>
+                <div className="flex-1">
+                  <input
+                    type="url"
+                    value={link.url}
+                    onChange={(e) => updateUsefulLink(index, "url", e.target.value)}
+                    placeholder="https://example.com"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeUsefulLink(index)}
+                  className="px-3 py-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg text-sm"
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+            {usefulLinks.length === 0 && (
+              <p className="text-gray-500 dark:text-gray-400 text-center py-4">No useful links added yet</p>
             )}
           </div>
         </div>

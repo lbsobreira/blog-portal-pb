@@ -219,6 +219,8 @@ model SiteSettings {
   certifications String   @db.Text @default("[]")
   // Badges (stored as JSON) - array of {name, imageUrl, link?}
   badges         String   @db.Text @default("[]")
+  // Useful Links (stored as JSON) - array of {name, url}
+  usefulLinks    String   @db.Text @default("[]")
 
   updatedAt      DateTime @updatedAt
 

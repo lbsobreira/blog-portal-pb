@@ -3,6 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 
+interface UsefulLink {
+  name: string;
+  url: string;
+}
+
 interface SiteSettings {
   siteName: string;
   siteTagline: string;
@@ -10,6 +15,7 @@ interface SiteSettings {
   githubUrl: string | null;
   linkedinUrl: string | null;
   twitterUrl: string | null;
+  usefulLinks: UsefulLink[];
 }
 
 export default function Footer() {
@@ -24,6 +30,12 @@ export default function Footer() {
       .then((res) => res.ok ? res.json() : null)
       .then((data) => {
         if (data?.settings) {
+          let parsedLinks: UsefulLink[] = [];
+          try {
+            parsedLinks = data.settings.usefulLinks ? JSON.parse(data.settings.usefulLinks) : [];
+          } catch {
+            parsedLinks = [];
+          }
           setSettings({
             siteName: data.settings.siteName || "IT Blog",
             siteTagline: data.settings.siteTagline || "A personal space to showcase IT projects and share technical knowledge",
@@ -31,6 +43,7 @@ export default function Footer() {
             githubUrl: data.settings.githubUrl,
             linkedinUrl: data.settings.linkedinUrl,
             twitterUrl: data.settings.twitterUrl,
+            usefulLinks: parsedLinks,
           });
         } else {
           setSettings({
@@ -40,6 +53,7 @@ export default function Footer() {
             githubUrl: null,
             linkedinUrl: null,
             twitterUrl: null,
+            usefulLinks: [],
           });
         }
       })
@@ -51,6 +65,7 @@ export default function Footer() {
           githubUrl: null,
           linkedinUrl: null,
           twitterUrl: null,
+          usefulLinks: [],
         });
       });
   }, []);
@@ -70,7 +85,7 @@ export default function Footer() {
   return (
     <footer className="border-t border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
       <div className="container mx-auto px-4 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center md:text-left md:justify-items-center">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 text-center md:text-left md:justify-items-center">
           {/* Brand */}
           <div className="md:text-center">
             <Link href="/" className="inline-flex items-center font-bold text-xl hover:text-blue-600 transition-colors">
@@ -130,6 +145,27 @@ export default function Footer() {
               <p className="text-sm text-gray-500">Links coming soon</p>
             )}
           </div>
+
+          {/* Resources / Useful Links */}
+          {settings?.usefulLinks && settings.usefulLinks.length > 0 && (
+            <div className="md:text-center">
+              <h3 className="font-semibold mb-4">Resources</h3>
+              <ul className="space-y-2">
+                {settings.usefulLinks.map((link, index) => (
+                  <li key={index}>
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-gray-600 dark:text-gray-400 hover:text-blue-600 transition-colors"
+                    >
+                      {link.name}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
 
         <div className="mt-8 pt-8 border-t border-gray-200 dark:border-gray-800">
