@@ -44,29 +44,55 @@ interface Post {
   };
 }
 
-interface GroupedPosts {
-  [categoryName: string]: Post[];
+interface Pagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
 }
+
+const POSTS_PER_PAGE = 9;
 
 function BlogContent() {
   const { data: session } = useSession();
   const searchParams = useSearchParams();
   const router = useRouter();
   const [posts, setPosts] = useState<Post[]>([]);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState<Pagination | null>(null);
 
   const activeTag = searchParams.get("tag");
   const activeCategory = searchParams.get("category");
+  const currentPage = parseInt(searchParams.get("page") || "1");
+
+  useEffect(() => {
+    fetchTags();
+  }, []);
 
   useEffect(() => {
     fetchPosts();
-  }, [activeTag, activeCategory]);
+  }, [activeTag, activeCategory, currentPage]);
+
+  const fetchTags = async () => {
+    try {
+      const response = await fetch("/api/tags");
+      if (response.ok) {
+        const data = await response.json();
+        setAllTags(data.tags || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch tags:", err);
+    }
+  };
 
   const fetchPosts = async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
+      params.append("page", currentPage.toString());
+      params.append("limit", POSTS_PER_PAGE.toString());
       if (activeTag) params.append("tag", activeTag);
       if (activeCategory) params.append("category", activeCategory);
 
@@ -75,6 +101,7 @@ function BlogContent() {
 
       const data = await response.json();
       setPosts(data.posts);
+      setPagination(data.pagination);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load posts");
     } finally {
@@ -82,36 +109,22 @@ function BlogContent() {
     }
   };
 
-  // Group posts by category
-  const groupPostsByCategory = (posts: Post[]): GroupedPosts => {
-    const grouped: GroupedPosts = {};
-
-    posts.forEach((post) => {
-      const categoryName = post.category?.name || "Uncategorized";
-      if (!grouped[categoryName]) {
-        grouped[categoryName] = [];
-      }
-      grouped[categoryName].push(post);
-    });
-
-    return grouped;
+  const handlePageChange = (page: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", page.toString());
+    router.push(`/blog?${params.toString()}`);
   };
 
-  const groupedPosts = groupPostsByCategory(posts);
+  const handleTagFilter = (tagSlug: string | null) => {
+    const params = new URLSearchParams();
+    if (tagSlug) {
+      params.set("tag", tagSlug);
+    }
+    // Reset to page 1 when changing tag filter
+    router.push(`/blog${params.toString() ? `?${params.toString()}` : ""}`);
+  };
 
-  // Sort categories: named categories first (alphabetically), then Uncategorized
-  const sortedCategories = Object.keys(groupedPosts).sort((a, b) => {
-    if (a === "Uncategorized") return 1;
-    if (b === "Uncategorized") return -1;
-    return a.localeCompare(b);
-  });
-
-  // Get all unique tags from posts
-  const allTags = Array.from(
-    new Set(posts.flatMap((p) => p.tags.map((t) => t.tag)))
-  ).sort((a, b) => a.name.localeCompare(b.name));
-
-  if (loading) {
+  if (loading && posts.length === 0) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -142,40 +155,35 @@ function BlogContent() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-4">Blog</h1>
-          <p className="text-gray-600 dark:text-gray-400">
+        <div className="text-center mb-12">
+          <h1 className="text-4xl md:text-5xl font-bold mb-4">Blog</h1>
+          <p className="text-lg text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
             IT insights, tutorials, and experiences
           </p>
         </div>
 
         {/* Tag Filters */}
-        {allTags.length > 0 && !activeCategory && (
+        {allTags.length > 0 && (
           <div className="mb-8">
-            <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-              Filter by Tag
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {activeTag && (
-                <button
-                  onClick={() => router.push("/blog")}
-                  className="px-3 py-1 rounded-full text-sm bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-300 dark:hover:bg-gray-600"
-                >
-                  Clear filter
-                </button>
-              )}
+            <div className="flex flex-wrap gap-2 justify-center">
+              <button
+                onClick={() => handleTagFilter(null)}
+                className={`px-4 py-2 rounded-lg transition-colors ${
+                  !activeTag
+                    ? "bg-blue-600 text-white"
+                    : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                }`}
+              >
+                All Posts
+              </button>
               {allTags.map((tag) => (
                 <button
                   key={tag.id}
-                  onClick={() =>
-                    router.push(
-                      activeTag === tag.slug ? "/blog" : `/blog?tag=${tag.slug}`
-                    )
-                  }
-                  className={`px-3 py-1 rounded-full text-sm transition-colors ${
+                  onClick={() => handleTagFilter(activeTag === tag.slug ? null : tag.slug)}
+                  className={`px-4 py-2 rounded-lg transition-colors ${
                     activeTag === tag.slug
-                      ? "bg-green-600 text-white"
-                      : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
+                      ? "bg-blue-600 text-white"
+                      : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   }`}
                 >
                   #{tag.name}
@@ -185,69 +193,74 @@ function BlogContent() {
           </div>
         )}
 
-        {/* Active Filter Indicator */}
-        {(activeTag || activeCategory) && (
-          <div className="mb-6 flex items-center gap-2 text-sm">
-            <span className="text-gray-600 dark:text-gray-400">Showing:</span>
-            {activeCategory && (
-              <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 rounded-full">
-                {activeCategory}
-              </span>
-            )}
-            {activeTag && (
-              <span className="px-3 py-1 bg-green-100 dark:bg-green-900/20 text-green-800 dark:text-green-300 rounded-full">
-                #{activeTag}
-              </span>
-            )}
-            <button
-              onClick={() => router.push("/blog")}
-              className="text-red-600 dark:text-red-400 hover:underline ml-2"
-            >
-              Clear
-            </button>
-          </div>
-        )}
-
-        {/* Posts by Category */}
+        {/* Posts Grid */}
         {posts.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              No posts found
+            <p className="text-gray-600 dark:text-gray-400 text-lg">
+              {activeTag
+                ? "No posts found with this tag"
+                : "No posts yet. Check back soon!"}
             </p>
-            {(activeTag || activeCategory) && (
-              <button
-                onClick={() => router.push("/blog")}
-                className="text-blue-600 dark:text-blue-400 hover:underline"
-              >
-                View all posts
-              </button>
-            )}
           </div>
         ) : (
-          <div className="space-y-12">
-            {sortedCategories.map((categoryName) => (
-              <section key={categoryName}>
-                {/* Category Header */}
-                <div className="flex items-center gap-4 mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    {categoryName}
-                  </h2>
-                  <div className="flex-1 h-px bg-gray-300 dark:bg-gray-700"></div>
-                </div>
+          <>
+            <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+              {posts.map((post) => (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  isAdmin={session?.user?.role === "ADMIN"}
+                />
+              ))}
+            </div>
 
-                {/* Posts Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {groupedPosts[categoryName].map((post) => (
-                    <PostCard
-                      key={post.id}
-                      post={post}
-                      isAdmin={session?.user?.role === "ADMIN"}
-                    />
+            {/* Pagination */}
+            {pagination && pagination.totalPages > 1 && (
+              <div className="mt-12 flex justify-center">
+                <nav className="flex items-center gap-2">
+                  {/* Previous Button */}
+                  <button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage <= 1}
+                    className="px-4 py-2 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Previous
+                  </button>
+
+                  {/* Page Numbers */}
+                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((page) => (
+                    <button
+                      key={page}
+                      onClick={() => handlePageChange(page)}
+                      className={`px-4 py-2 rounded-lg transition-colors ${
+                        currentPage === page
+                          ? "bg-blue-600 text-white"
+                          : "bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                      }`}
+                    >
+                      {page}
+                    </button>
                   ))}
-                </div>
-              </section>
-            ))}
-          </div>
+
+                  {/* Next Button */}
+                  <button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage >= pagination.totalPages}
+                    className="px-4 py-2 rounded-lg bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    Next
+                  </button>
+                </nav>
+              </div>
+            )}
+
+            {/* Total count */}
+            {pagination && (
+              <div className="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+                Showing {((currentPage - 1) * POSTS_PER_PAGE) + 1} - {Math.min(currentPage * POSTS_PER_PAGE, pagination.total)} of {pagination.total} posts
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>

@@ -225,6 +225,21 @@ model SiteSettings {
   @@map("site_settings")
 }
 
+// Project Category model for organizing projects
+model ProjectCategory {
+  id          String    @id @default(cuid())
+  name        String    @unique
+  slug        String    @unique
+  description String?
+  order       Int       @default(0)
+  createdAt   DateTime  @default(now())
+
+  // Relations
+  projects Project[]
+
+  @@map("project_categories")
+}
+
 // Project model for portfolio showcase
 model Project {
   id           String   @id @default(cuid())
@@ -237,10 +252,15 @@ model Project {
   imageUrl     String?
   featured     Boolean  @default(false)
   order        Int      @default(0)
+  categoryId   String?  // Optional - null for uncategorized
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // Relations
+  category ProjectCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
   @@index([slug])
   @@index([featured])
+  @@index([categoryId])
   @@map("projects")
 }

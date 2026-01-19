@@ -22,18 +22,33 @@ interface Tag {
   };
 }
 
+interface ProjectCategory {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  order: number;
+  _count: {
+    projects: number;
+  };
+}
+
 export default function CategoriesTagsPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
+  const [projectCategories, setProjectCategories] = useState<ProjectCategory[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"categories" | "tags">("categories");
+  const [activeTab, setActiveTab] = useState<"categories" | "tags" | "projectCategories">("categories");
 
   // Form states
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryDesc, setNewCategoryDesc] = useState("");
   const [newTagName, setNewTagName] = useState("");
+  const [newProjectCategoryName, setNewProjectCategoryName] = useState("");
+  const [newProjectCategoryDesc, setNewProjectCategoryDesc] = useState("");
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
+  const [editingProjectCategory, setEditingProjectCategory] = useState<ProjectCategory | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -42,9 +57,10 @@ export default function CategoriesTagsPage() {
 
   const fetchData = async () => {
     try {
-      const [catRes, tagRes] = await Promise.all([
+      const [catRes, tagRes, projCatRes] = await Promise.all([
         fetch("/api/categories"),
         fetch("/api/tags"),
+        fetch("/api/project-categories"),
       ]);
 
       if (catRes.ok) {
@@ -55,6 +71,11 @@ export default function CategoriesTagsPage() {
       if (tagRes.ok) {
         const tagData = await tagRes.json();
         setTags(tagData.tags);
+      }
+
+      if (projCatRes.ok) {
+        const projCatData = await projCatRes.json();
+        setProjectCategories(projCatData.categories);
       }
     } catch (err) {
       console.error("Error fetching data:", err);
@@ -199,6 +220,77 @@ export default function CategoriesTagsPage() {
     }
   };
 
+  // Project Category handlers
+  const handleCreateProjectCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+
+    try {
+      const response = await fetch("/api/project-categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newProjectCategoryName, description: newProjectCategoryDesc }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to create project category");
+      }
+
+      setNewProjectCategoryName("");
+      setNewProjectCategoryDesc("");
+      fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create project category");
+    }
+  };
+
+  const handleUpdateProjectCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProjectCategory) return;
+    setError(null);
+
+    try {
+      const response = await fetch(`/api/project-categories/${editingProjectCategory.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editingProjectCategory.name,
+          description: editingProjectCategory.description,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to update project category");
+      }
+
+      setEditingProjectCategory(null);
+      fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update project category");
+    }
+  };
+
+  const handleDeleteProjectCategory = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this project category? Projects in this category will become uncategorized.")) return;
+
+    try {
+      const response = await fetch(`/api/project-categories/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete project category");
+      }
+
+      fetchData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete project category");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -233,7 +325,7 @@ export default function CategoriesTagsPage() {
                 : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
             }`}
           >
-            Categories ({categories.length})
+            Post Categories ({categories.length})
           </button>
           <HelpTip text="Categories are broad topics to organize posts. Each post belongs to ONE category. Example: 'DevOps', 'Security', 'Programming'." />
         </div>
@@ -249,6 +341,19 @@ export default function CategoriesTagsPage() {
             Tags ({tags.length})
           </button>
           <HelpTip text="Tags are specific keywords for cross-referencing. Each post can have MULTIPLE tags. Example: 'Docker', 'Kubernetes', 'AWS', 'Python'." />
+        </div>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setActiveTab("projectCategories")}
+            className={`pb-4 px-2 font-medium transition-colors ${
+              activeTab === "projectCategories"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+            }`}
+          >
+            Project Categories ({projectCategories.length})
+          </button>
+          <HelpTip text="Categories to organize portfolio projects. Example: 'Frontend', 'Backend', 'DevOps', 'Full Stack'." />
         </div>
       </div>
 
@@ -469,6 +574,141 @@ export default function CategoriesTagsPage() {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Project Categories Tab */}
+      {activeTab === "projectCategories" && (
+        <div className="space-y-6">
+          {/* Add Project Category Form */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+            <h2 className="text-lg font-semibold mb-4">Add New Project Category</h2>
+            <form onSubmit={handleCreateProjectCategory} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-1">Name</label>
+                <input
+                  type="text"
+                  value={newProjectCategoryName}
+                  onChange={(e) => setNewProjectCategoryName(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                  placeholder="e.g., Frontend, Backend, DevOps"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Description (optional)
+                </label>
+                <input
+                  type="text"
+                  value={newProjectCategoryDesc}
+                  onChange={(e) => setNewProjectCategoryDesc(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700"
+                  placeholder="Category description"
+                />
+              </div>
+              <button
+                type="submit"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Add Project Category
+              </button>
+            </form>
+          </div>
+
+          {/* Project Categories List */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Name
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Slug
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Projects
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                {projectCategories.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
+                      No project categories yet
+                    </td>
+                  </tr>
+                ) : (
+                  projectCategories.map((category) => (
+                    <tr key={category.id}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {editingProjectCategory?.id === category.id ? (
+                          <input
+                            type="text"
+                            value={editingProjectCategory.name}
+                            onChange={(e) =>
+                              setEditingProjectCategory({
+                                ...editingProjectCategory,
+                                name: e.target.value,
+                              })
+                            }
+                            className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700"
+                          />
+                        ) : (
+                          <span className="font-medium">{category.name}</span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                        {category.slug}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="px-2 py-1 text-xs bg-gray-100 dark:bg-gray-700 rounded">
+                          {category._count.projects}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right">
+                        {editingProjectCategory?.id === category.id ? (
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={handleUpdateProjectCategory}
+                              className="text-green-600 hover:text-green-800"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingProjectCategory(null)}
+                              className="text-gray-500 hover:text-gray-700"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => setEditingProjectCategory(category)}
+                              className="text-blue-600 hover:text-blue-800"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProjectCategory(category.id)}
+                              className="text-red-600 hover:text-red-800"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

@@ -1,14 +1,21 @@
 "use client";
 
-import { useState, FormEvent } from "react";
+import { useState, useEffect, FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import HelpTip from "@/components/ui/HelpTip";
+
+interface ProjectCategory {
+  id: string;
+  name: string;
+  slug: string;
+}
 
 export default function NewProjectPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [categories, setCategories] = useState<ProjectCategory[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     slug: "",
@@ -18,7 +25,16 @@ export default function NewProjectPage() {
     liveUrl: "",
     imageUrl: "",
     featured: false,
+    categoryId: "",
   });
+
+  useEffect(() => {
+    // Fetch project categories
+    fetch("/api/project-categories")
+      .then((res) => res.json())
+      .then((data) => setCategories(data.categories || []))
+      .catch((err) => console.error("Failed to fetch categories:", err));
+  }, []);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -43,6 +59,7 @@ export default function NewProjectPage() {
           githubUrl: formData.githubUrl || null,
           liveUrl: formData.liveUrl || null,
           imageUrl: formData.imageUrl || null,
+          categoryId: formData.categoryId || null,
         }),
       });
 
@@ -160,6 +177,32 @@ export default function NewProjectPage() {
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
               required
             />
+          </div>
+
+          {/* Category */}
+          <div>
+            <label
+              htmlFor="categoryId"
+              className="block text-sm font-medium mb-2"
+            >
+              Category
+              <HelpTip text="Organize your project by category. Create categories in Admin > Categories > Project Categories." />
+            </label>
+            <select
+              id="categoryId"
+              value={formData.categoryId}
+              onChange={(e) =>
+                setFormData({ ...formData, categoryId: e.target.value })
+              }
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+            >
+              <option value="">Uncategorized</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Technologies */}

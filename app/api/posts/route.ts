@@ -9,28 +9,46 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const category = searchParams.get("category");
     const tag = searchParams.get("tag");
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "0"); // 0 = no pagination
 
     // Admin can see all posts, others only published
     const isAdmin = session?.user?.role === "ADMIN";
 
-    const posts = await prisma.post.findMany({
-      where: {
-        ...(isAdmin ? {} : { published: true }),
-        ...(category && {
-          category: {
-            slug: category,
-          },
-        }),
-        ...(tag && {
-          tags: {
-            some: {
-              tag: {
-                slug: tag,
-              },
+    const whereClause = {
+      ...(isAdmin ? {} : { published: true }),
+      ...(category && {
+        category: {
+          slug: category,
+        },
+      }),
+      ...(tag && {
+        tags: {
+          some: {
+            tag: {
+              slug: tag,
             },
           },
-        }),
-      },
+        },
+      }),
+    };
+
+    // Get total count for pagination
+    const total = limit > 0 ? await prisma.post.count({ where: whereClause }) : 0;
+
+    const queryOptions: {
+      where: typeof whereClause;
+      include: {
+        author: { select: { id: boolean; name: boolean; image: boolean } };
+        category: boolean;
+        tags: { include: { tag: boolean } };
+        _count: { select: { comments: boolean; likes: boolean } };
+      };
+      orderBy: { createdAt: "desc" };
+      skip?: number;
+      take?: number;
+    } = {
+      where: whereClause,
       include: {
         author: {
           select: {
@@ -55,9 +73,25 @@ export async function GET(req: NextRequest) {
       orderBy: {
         createdAt: "desc",
       },
-    });
+    };
 
-    return NextResponse.json({ posts });
+    // Apply pagination if limit is set
+    if (limit > 0) {
+      queryOptions.skip = (page - 1) * limit;
+      queryOptions.take = limit;
+    }
+
+    const posts = await prisma.post.findMany(queryOptions);
+
+    return NextResponse.json({
+      posts,
+      pagination: limit > 0 ? {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      } : null,
+    });
   } catch (error) {
     console.error("Error fetching posts:", error);
     return NextResponse.json(

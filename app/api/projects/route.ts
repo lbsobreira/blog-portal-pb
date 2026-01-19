@@ -8,6 +8,10 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const featured = searchParams.get("featured");
     const technology = searchParams.get("technology");
+    const categoryId = searchParams.get("categoryId");
+    const page = parseInt(searchParams.get("page") || "1");
+    const limit = parseInt(searchParams.get("limit") || "0"); // 0 = no limit (all)
+    const uncategorized = searchParams.get("uncategorized");
 
     const where: any = {};
 
@@ -23,15 +27,54 @@ export async function GET(req: NextRequest) {
       };
     }
 
-    const projects = await prisma.project.findMany({
+    // Filter by category
+    if (categoryId) {
+      where.categoryId = categoryId;
+    }
+
+    // Filter uncategorized projects
+    if (uncategorized === "true") {
+      where.categoryId = null;
+    }
+
+    // Get total count for pagination
+    const total = await prisma.project.count({ where });
+
+    // Build query options
+    const queryOptions: any = {
       where,
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
       orderBy: [
         { featured: "desc" }, // Featured projects first
         { createdAt: "desc" },
       ],
-    });
+    };
 
-    return NextResponse.json({ projects });
+    // Apply pagination only if limit > 0
+    if (limit > 0) {
+      queryOptions.skip = (page - 1) * limit;
+      queryOptions.take = limit;
+    }
+
+    const projects = await prisma.project.findMany(queryOptions);
+
+    return NextResponse.json({
+      projects,
+      pagination: limit > 0 ? {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      } : null,
+    });
   } catch (error) {
     console.error("Error fetching projects:", error);
     return NextResponse.json(
@@ -60,6 +103,7 @@ export async function POST(req: NextRequest) {
       liveUrl,
       imageUrl,
       featured,
+      categoryId,
     } = body;
 
     // Validation
@@ -100,6 +144,16 @@ export async function POST(req: NextRequest) {
         liveUrl,
         imageUrl,
         featured: featured || false,
+        categoryId: categoryId || null,
+      },
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
       },
     });
 

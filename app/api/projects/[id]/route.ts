@@ -13,12 +13,30 @@ export async function GET(
     // Try to find by ID first, then by slug
     let project = await prisma.project.findUnique({
       where: { id },
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
+      },
     });
 
     // If not found by ID, try by slug
     if (!project) {
       project = await prisma.project.findUnique({
         where: { slug: id },
+        include: {
+          category: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
+        },
       });
     }
 
@@ -62,6 +80,7 @@ export async function PUT(
       liveUrl,
       imageUrl,
       featured,
+      categoryId,
     } = body;
 
     // Check if project exists
@@ -114,6 +133,16 @@ export async function PUT(
         liveUrl: liveUrl !== undefined ? liveUrl : existingProject.liveUrl,
         imageUrl: imageUrl !== undefined ? imageUrl : existingProject.imageUrl,
         featured: featured !== undefined ? featured : existingProject.featured,
+        categoryId: categoryId !== undefined ? categoryId : existingProject.categoryId,
+      },
+      include: {
+        category: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+          },
+        },
       },
     });
 

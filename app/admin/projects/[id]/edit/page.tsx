@@ -5,6 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import HelpTip from "@/components/ui/HelpTip";
 
+interface ProjectCategory {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 interface Project {
   id: string;
   title: string;
@@ -15,6 +21,8 @@ interface Project {
   liveUrl: string | null;
   imageUrl: string | null;
   featured: boolean;
+  categoryId: string | null;
+  category: ProjectCategory | null;
 }
 
 export default function EditProjectPage() {
@@ -24,6 +32,7 @@ export default function EditProjectPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [project, setProject] = useState<Project | null>(null);
+  const [categories, setCategories] = useState<ProjectCategory[]>([]);
   const [formData, setFormData] = useState({
     title: "",
     slug: "",
@@ -33,9 +42,18 @@ export default function EditProjectPage() {
     liveUrl: "",
     imageUrl: "",
     featured: false,
+    categoryId: "",
   });
 
   const id = params.id as string;
+
+  useEffect(() => {
+    // Fetch project categories
+    fetch("/api/project-categories")
+      .then((res) => res.json())
+      .then((data) => setCategories(data.categories || []))
+      .catch((err) => console.error("Failed to fetch categories:", err));
+  }, []);
 
   useEffect(() => {
     if (id) {
@@ -66,6 +84,7 @@ export default function EditProjectPage() {
         liveUrl: data.project.liveUrl || "",
         imageUrl: data.project.imageUrl || "",
         featured: data.project.featured,
+        categoryId: data.project.categoryId || "",
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load project");
@@ -97,6 +116,7 @@ export default function EditProjectPage() {
           githubUrl: formData.githubUrl || null,
           liveUrl: formData.liveUrl || null,
           imageUrl: formData.imageUrl || null,
+          categoryId: formData.categoryId || null,
         }),
       });
 
@@ -231,6 +251,32 @@ export default function EditProjectPage() {
               className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
               required
             />
+          </div>
+
+          {/* Category */}
+          <div>
+            <label
+              htmlFor="categoryId"
+              className="block text-sm font-medium mb-2"
+            >
+              Category
+              <HelpTip text="Organize your project by category. Create categories in Admin > Categories > Project Categories." />
+            </label>
+            <select
+              id="categoryId"
+              value={formData.categoryId}
+              onChange={(e) =>
+                setFormData({ ...formData, categoryId: e.target.value })
+              }
+              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700"
+            >
+              <option value="">Uncategorized</option>
+              {categories.map((cat) => (
+                <option key={cat.id} value={cat.id}>
+                  {cat.name}
+                </option>
+              ))}
+            </select>
           </div>
 
           {/* Technologies */}
