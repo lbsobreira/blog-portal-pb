@@ -112,13 +112,17 @@ A modern, full-featured blog and portfolio platform built with Next.js 16, featu
    EMAIL_FROM="onboarding@resend.dev"
    ```
 
-5. **Push schema to database**
+5. **Set up database with security**
    ```bash
-   npx prisma db push
+   # Push schema and enable Row Level Security (recommended)
+   npm run db:setup
 
    # (Optional) Seed with sample data
    npm run db:seed
    ```
+
+   > **Note:** `db:setup` automatically enables Row Level Security (RLS) on all tables,
+   > which is required for Supabase deployments to pass security checks.
 
 6. **Start development server**
    ```bash
@@ -205,8 +209,14 @@ postgresql://USER:PASSWORD@HOST:PORT/DATABASE?options
 ### Database Commands
 
 ```bash
-# Push schema to database (development)
+# Set up database with schema + RLS security (recommended)
+npm run db:setup
+
+# Push schema only (without RLS)
 npm run db:push
+
+# Enable RLS on existing database
+npm run db:setup-rls
 
 # Open visual database browser
 npm run db:studio
@@ -288,11 +298,21 @@ blog-portal/
 
 ## Security Features
 
+- **Row Level Security (RLS)** - Enabled on all tables for Supabase deployments
 - XSS prevention with DOMPurify
 - SQL injection protection (Prisma ORM)
 - Rate limiting on auth, comments, and likes
 - CSRF protection via Auth.js
 - Role-based API authorization
+
+### Supabase Security
+
+When using Supabase as your database, run `npm run db:setup` (instead of `db:push`) to automatically enable Row Level Security on all tables. This:
+
+- Blocks unauthorized access via Supabase's PostgREST API
+- Protects sensitive data (tokens, sessions, user info)
+- Satisfies Supabase's security linter requirements
+- Works seamlessly with Prisma (which uses service_role to bypass RLS)
 
 ## Contributing
 
